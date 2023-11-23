@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 const prisma = new PrismaClient();
 
 class AccessTokenGenerator {
-  private readonly secret: string = process.env.JWT_SECRET || 'hack_winner';
+  private readonly secret: string = process.env.JWT_SECRET || 'secret';
   private readonly expiresIn: string = '1h';
 
   /**

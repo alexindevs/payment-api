@@ -8,57 +8,65 @@ import { Request, Response, NextFunction } from "express";
 const AGT = new AccessTokenGenerator();
 
 export const createUser = async (req: Request, res: Response) => {
-    const { username, email, password } = req.body;
+    try {
+        const { username, email, password } = req.body;
 
-    if (!username || !email || !password) {
-        return res.status(400).json({ message: "All fields are required" });
-    }
+        if (!username || !email || !password) {
+            return res.status(400).json({ message: "All fields are required" });
+        }
 
-    const existingUser = await User.getUserByIdentifier(username) || await User.getUserByIdentifier(email);
+        const existingUser = await User.getUserByIdentifier(username) || await User.getUserByIdentifier(email);
 
-    if (existingUser) {
-        return res.status(409).json({ message: "User already exists!" });
-    }
+        if (existingUser) {
+            return res.status(409).json({ message: "User already exists!" });
+        }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = await User.createAccount(username, email, hashedPassword);
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = await User.createAccount(username, email, hashedPassword);
 
-    if (newUser) {
-        const accessToken = await AGT.generate(newUser.user.id);
-        const refreshToken = await RefreshToken.createToken(newUser.user.id);
-        res.status(201).json({message: "User created successfully", accessToken});
+        if (newUser) {
+            const accessToken = await AGT.generate(newUser.user.id);
+            const refreshToken = await RefreshToken.createToken(newUser.user.id);
+            res.status(201).json({message: "User created successfully", accessToken});
+        }
+    } catch (error) {
+        res.status(500).json({ message: "Internal server error" });
     }
 }
 
 export const loginUser = async (req: Request, res: Response) => {
-    const { username, password } = req.body;
+    try {
+        const { username, password } = req.body;
 
-    if (!username || !password) {
-        return res.status(400).json({ message: "All fields are required" });
+        if (!username || !password) {
+            return res.status(400).json({ message: "All fields are required" });
+        }
+
+        const user = await User.getUserByIdentifier(username);
+
+        if (!user) {
+            return res.status(401).json({ message: "Invalid credentials" });
+        }
+
+        const isPasswordValid = await user.checkPassword(password);
+
+        if (!isPasswordValid) {
+            return res.status(401).json({ message: "Invalid credentials" });
+        }
+
+        const oldToken = await RefreshToken.getTokenByUserId(user.user.id);
+
+        if (oldToken) {
+            await oldToken.destroyToken();
+        }
+
+        const accessToken = await AGT.generate(user.user.id);
+        const refreshToken = await RefreshToken.createToken(user.user.id);
+
+        res.status(200).json({message: "Login successful", accessToken});
+    } catch (error) {
+        res.status(500).json({ message: "Internal server error" });
     }
-
-    const user = await User.getUserByIdentifier(username);
-
-    if (!user) {
-        return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    const isPasswordValid = await user.checkPassword(password);
-
-    if (!isPasswordValid) {
-        return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    const oldToken = await RefreshToken.getTokenByUserId(user.user.id);
-
-    if (oldToken) {
-        await oldToken.destroyToken();
-    }
-
-    const accessToken = await AGT.generate(user.user.id);
-    const refreshToken = await RefreshToken.createToken(user.user.id);
-
-    res.status(200).json({message: "Login successful", accessToken});
 }
 
 export async function tokenVerification(req: Request, res: Response, next: NextFunction) {
