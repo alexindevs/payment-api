@@ -11,11 +11,12 @@ datasource db {
 }
 
 model User {
-  id        Int           @id @default(autoincrement())
-  username  String        @unique
-  email     String        @unique
-  password  String
-  refreshTokens RefreshToken[]
+  id                   Int           @id @default(autoincrement())
+  username             String        @unique
+  email                String        @unique
+  password             String
+  refreshTokens        RefreshToken[]
+  transactions         Transaction[]
 }
 
 model RefreshToken {
@@ -23,4 +24,19 @@ model RefreshToken {
   userId     Int
   token      String
   user       User   @relation(fields: [userId], references: [id])
+}
+
+// schema.prisma
+
+model Transaction {
+  id                   Int       @id @default(autoincrement())
+  userId               Int       // ID of the user involved in the transaction
+  amount               Float     // Amount of the transaction
+  currency             String    // Currency of the transaction
+  status               String    // Status of the transaction (pending, successful, failed, etc.)
+  reference            String    @unique // Unique reference for the transaction
+  initiationDateTime   BigInt    // Date and time when the transaction was initiated in milliseconds
+  completionDateTime   BigInt?   // Date and time when the transaction was completed in milliseconds (nullable)
+  narration            String?   // Additional information or notes about the transaction
+  user                 User      @relation(fields: [userId], references: [id])
 }
