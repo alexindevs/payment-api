@@ -1,10 +1,18 @@
-const Flutterwave = require('flutterwave-node-v3');
-const flw = new Flutterwave(String(process.env.FLUTTERWAVE_PUBLIC_KEY), String(process.env.FLUTTERWAVE_SECRET_KEY));
-import Transaction from "../models/transaction.model";
-import User from "../models/user.model";
+// src/controllers/transaction.controller.ts
 
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import User from '../models/user.model';
+import Transaction from '../models/transaction.model';
+
+// Use dynamic import for production to avoid type issues
+let flw: any;
+if (process.env.NODE_ENV === 'production') {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const Flutterwave = require('flutterwave-node-v3');
+  flw = new Flutterwave(String(process.env.FLUTTERWAVE_PUBLIC_KEY), String(process.env.FLUTTERWAVE_SECRET_KEY));
+}
+
 export const StartTransaction = async (req: Request, res: Response) => {
   try {
     const { userId, amount, currency, narration } = req.body;
@@ -12,13 +20,16 @@ export const StartTransaction = async (req: Request, res: Response) => {
 
     const reference = uuidv4();
 
-    const flutterwaveResponse = await flw.Charge.bank_transfer({
-      tx_ref: reference,
-      amount: String(amount),
-      email: user?.user.email,
-      currency,
-    });
-
+    // Use the dynamic import for flutterwave only in production
+    const flutterwaveResponse = process.env.NODE_ENV === 'production'
+      ? await flw.Charge.bank_transfer({
+          tx_ref: reference,
+          amount: String(amount),
+          email: user?.user.email,
+          currency,
+        })
+      : {};
+      
     if (flutterwaveResponse.status === 'success') {
       const newTransaction = await Transaction.initiateTransaction(userId, amount, currency, reference, narration);
       res.json({
@@ -31,6 +42,7 @@ export const StartTransaction = async (req: Request, res: Response) => {
         },
       });
     } else {
+      console.log("Flutterwave failed..")
       res.status(500).json({
         status: false,
         message: 'Failed to initiate transaction',
@@ -49,6 +61,12 @@ export const StartTransaction = async (req: Request, res: Response) => {
 
 export const EndTransaction = async (req: Request, res: Response) => {
   try {
+    const verif_hash = req.headers['verif-hash'];
+
+    if (!verif_hash || verif_hash !== process.env.FLUTTERWAVE_VERIF_HASH) {
+      return res.status(400).json({ status: 'error', message: 'Invalid verification hash' });
+    }
+
     const webhookPayload = req.body; // Assuming the payload is in the request body
     console.log(webhookPayload);
     if (!webhookPayload) {
@@ -56,6 +74,7 @@ export const EndTransaction = async (req: Request, res: Response) => {
     }
     // Check if the webhook event indicates a successful charge
     if (webhookPayload.event === 'charge.completed' && webhookPayload.data.status === 'successful') {
+      res.status(200).json({ status: 'success', message: 'Notification received' });
       const reference = webhookPayload.data.tx_ref;
 
       // Fetch the transaction by reference
@@ -67,18 +86,17 @@ export const EndTransaction = async (req: Request, res: Response) => {
 
         if (completedTransaction) {
           // Transaction was successfully completed
-          return res.json({ status: 'success', message: 'Transaction completed successfully' });
+          console.log("Transaction completed with tx_ref: ", completedTransaction.transaction.reference);
         } else {
-          // Failed to complete the transaction after retries
-          return res.status(500).json({ status: 'error', message: 'Failed to complete transaction' });
+          console.log("Failed to complete the transaction with tx_ref: " + reference);
         }
       } else {
         // Transaction not found
-        return res.status(404).json({ status: 'error', message: 'Transaction not found' });
+        console.log("Transaction not found with tx_ref: " + reference);
       }
     } else {
       // Ignore non-successful charge events
-      return res.json({ status: 'success', message: 'Webhook event ignored' });
+      console.log(" Charge failed with tx_ref: ", webhookPayload.data.tx_ref);
     }
   } catch (error) {
     console.error('Error processing webhook:', error);

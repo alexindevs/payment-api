@@ -8,7 +8,7 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const prisma = new client_1.PrismaClient();
 class AccessTokenGenerator {
     constructor() {
-        this.secret = process.env.JWT_SECRET || 'hack_winner';
+        this.secret = process.env.JWT_SECRET || 'secret';
         this.expiresIn = '1h';
     }
     /**
