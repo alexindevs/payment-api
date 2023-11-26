@@ -19,12 +19,14 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 
 import AuthRouter from './routes/auth.routes';
+import TransactionRouter from './routes/transaction.routes';
+app.use("/transfers", TransactionRouter)
 app.use('/auth', AuthRouter);
 
 export default app
 
 // Comment this out when running tests
-// app.listen(port, () => {
-//     console.log(`Server is running on port ${port}`);
-// });
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+});
 

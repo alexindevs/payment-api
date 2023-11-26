@@ -25,7 +25,7 @@ const createUser = async (req, res) => {
         if (newUser) {
             const accessToken = await AGT.generate(newUser.user.id);
             const refreshToken = await refreshtoken_model_1.default.createToken(newUser.user.id);
-            res.status(201).json({ message: "User created successfully", accessToken });
+            res.status(201).json({ message: "User created successfully", token: accessToken });
         }
     }
     catch (error) {
@@ -53,7 +53,7 @@ const loginUser = async (req, res) => {
         }
         const accessToken = await AGT.generate(user.user.id);
         const refreshToken = await refreshtoken_model_1.default.createToken(user.user.id);
-        res.status(200).json({ message: "Login successful", accessToken });
+        res.status(200).json({ message: "Login successful", token: accessToken });
     }
     catch (error) {
         res.status(500).json({ message: "Internal server error" });

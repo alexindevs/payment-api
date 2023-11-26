@@ -40,9 +40,11 @@ const swaggerDocument = __importStar(require("../swagger.json")); // Adjust the 
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swaggerDocument));
 const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
+const transaction_routes_1 = __importDefault(require("./routes/transaction.routes"));
+app.use("/transfers", transaction_routes_1.default);
 app.use('/auth', auth_routes_1.default);
 exports.default = app;
 // Comment this out when running tests
-// app.listen(port, () => {
-//     console.log(`Server is running on port ${port}`);
-// });
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+});

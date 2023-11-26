@@ -138,7 +138,7 @@ class Transaction {
     }
   }
 
-  static async getTransactionsByTime(startDate: number, endDate: number): Promise<Transaction[]> { // Milliseconds
+  static async getTransactionsByTime(startDate: number, endDate: number, userId: number): Promise<Transaction[]> { // Milliseconds
     try {
       const transactions = await prisma.transaction.findMany({
         where: {
@@ -146,6 +146,7 @@ class Transaction {
             gte: startDate,
             lte: endDate,
           },
+          userId
         },
       });
       return transactions.map((transaction) => new Transaction(transaction));

@@ -82,8 +82,6 @@ jest.mock('../../src/models/transaction.model', () => ({
 }));
 
 test('StartTransaction initiates a successful transaction', async () => {
-  
-  // Mock request body
   mockRequest.body = {
     userId: 1,
     amount: 100,

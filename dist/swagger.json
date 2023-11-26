@@ -6,7 +6,7 @@
         "description": "API for user authentication"
     },
     "paths": {
-        "/register": {
+        "/auth/register": {
             "post": {
                 "summary": "Create a new user",
                 "tags": ["Authentication"],
@@ -68,7 +68,7 @@
                 }
             }
         },
-        "/login": {
+        "/auth/login": {
             "post": {
                 "summary": "Login user",
                 "tags": ["Authentication"],
@@ -125,7 +125,115 @@
                     }
                 }
             }
-        }
+        },
+        "/transfers/initialize": {
+            "post": {
+              "summary": "Initialize a new transaction",
+              "tags": ["Transaction"],
+              "security": [{"BearerAuth": []}],
+              "requestBody": {
+                "required": true,
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "userId": {"type": "integer"},
+                        "amount": {"type": "number"},
+                        "currency": {"type": "string"},
+                        "narration": {"type": "string"}
+                      },
+                      "required": ["userId", "amount", "currency", "narration"]
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "200": {
+                  "description": "Transaction initiated successfully",
+                  "content": {
+                    "application/json": {
+                      "example": {
+                        "status": true,
+                        "message": "Transaction initiated successfully. Make payment into this account:",
+                        "paymentInfo": {"transfer_reference": "string", "transfer_account": "string", "transfer_bank": "string", "transfer_amount": 0, "mode": "string"},
+                        "data": {"transactionId": 0, "reference": "string"}
+                      }
+                    }
+                  }
+                },
+                "500": {
+                  "description": "Internal Server Error",
+                  "content": {
+                    "application/json": {
+                      "example": {
+                        "status": false,
+                        "message": "Failed to initiate transaction",
+                        "data": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+        },
+        "/transfers/user/{userId}": {
+            "get": {
+              "summary": "Fetch transactions by user ID",
+              "tags": ["Transaction"],
+              "security": [{"BearerAuth": []}],
+              "parameters": [{"name": "userId", "in": "path", "required": true, "schema": {"type": "integer"}}],
+              "responses": {
+                "200": {
+                  "description": "Transactions fetched successfully",
+                  "content": {
+                    "application/json": {
+                      "example": [{"transaction": {"id": 0, "userId": 0, "amount": 0, "currency": "string", "status": "string", "reference": "string", "initiationDateTime": 0, "completionDateTime": 0}}]
+                    }
+                  }
+                },
+                "500": {
+                  "description": "Internal Server Error",
+                  "content": {
+                    "application/json": {"example": {"message": "Internal server error"}}
+                  }
+                }
+              }
+            }
+        },
+        "/transfers/period": {
+            "get": {
+              "summary": "Fetch transactions within a specified time period",
+              "tags": ["Transaction"],
+              "security": [{"BearerAuth": []}],
+              "parameters": [
+                {"name": "startDate", "in": "query", "required": true, "schema": {"type": "string"}},
+                {"name": "endDate", "in": "query", "required": true, "schema": {"type": "string"}}
+              ],
+              "responses": {
+                "200": {
+                  "description": "Transactions fetched successfully",
+                  "content": {
+                    "application/json": {
+                      "example": [{"transaction": {"id": 0, "userId": 0, "amount": 0, "currency": "string", "status": "string", "reference": "string", "initiationDateTime": 0, "completionDateTime": 0}}]
+                    }
+                  }
+                },
+                "400": {
+                  "description": "Bad Request - Start date and end date are required",
+                  "content": {
+                    "application/json": {"example": {"message": "Start date and end date are required"}}
+                  }
+                },
+                "500": {
+                  "description": "Internal Server Error",
+                  "content": {
+                    "application/json": {"example": {"message": "Internal server error"}}
+                  }
+                }
+              }
+            }
+        }        
     },
     "components": {
         "securitySchemes": {

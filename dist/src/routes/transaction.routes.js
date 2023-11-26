@@ -28,6 +28,7 @@ const TransactionController = __importStar(require("../controllers/transaction.c
 const auth_controller_1 = require("../controllers/auth.controller");
 const TransactionRouter = (0, express_1.Router)();
 TransactionRouter.post("/initialize", auth_controller_1.tokenVerification, TransactionController.StartTransaction);
-TransactionRouter.post("/verify", auth_controller_1.tokenVerification, TransactionController.EndTransaction);
-TransactionRouter.get("/:userId", auth_controller_1.tokenVerification, TransactionController.fetchTransactionsByUserID);
+TransactionRouter.post("/verify", TransactionController.EndTransaction);
+TransactionRouter.get("/user:userId", auth_controller_1.tokenVerification, TransactionController.fetchTransactionsByUserID);
 TransactionRouter.get("/period", auth_controller_1.tokenVerification, TransactionController.fetchTransactionByTime);
+exports.default = TransactionRouter;

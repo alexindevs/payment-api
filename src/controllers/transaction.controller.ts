@@ -4,6 +4,7 @@ import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import User from '../models/user.model';
 import Transaction from '../models/transaction.model';
+import jwt from 'jsonwebtoken';
 
 // Use dynamic import for production to avoid type issues
 let flw: any;
@@ -29,7 +30,7 @@ export const StartTransaction = async (req: Request, res: Response) => {
           currency,
         })
       : {};
-      
+
     if (flutterwaveResponse.status === 'success') {
       const newTransaction = await Transaction.initiateTransaction(userId, amount, currency, reference, narration);
       res.json({
@@ -66,36 +67,27 @@ export const EndTransaction = async (req: Request, res: Response) => {
     if (!verif_hash || verif_hash !== process.env.FLUTTERWAVE_VERIF_HASH) {
       return res.status(400).json({ status: 'error', message: 'Invalid verification hash' });
     }
-
     const webhookPayload = req.body; // Assuming the payload is in the request body
     console.log(webhookPayload);
     if (!webhookPayload) {
       return res.status(400).json({ status: 'error', message: 'Invalid webhook payload' });
     }
-    // Check if the webhook event indicates a successful charge
     if (webhookPayload.event === 'charge.completed' && webhookPayload.data.status === 'successful') {
       res.status(200).json({ status: 'success', message: 'Notification received' });
       const reference = webhookPayload.data.tx_ref;
-
-      // Fetch the transaction by reference
       const transaction = await Transaction.fetchTransactionByReference(reference);
-
       if (transaction) {
-        // Update the transaction status to "completed"
         const completedTransaction = await Transaction.completeTransaction(reference, webhookPayload.data.status);
 
         if (completedTransaction) {
-          // Transaction was successfully completed
           console.log("Transaction completed with tx_ref: ", completedTransaction.transaction.reference);
         } else {
           console.log("Failed to complete the transaction with tx_ref: " + reference);
         }
       } else {
-        // Transaction not found
         console.log("Transaction not found with tx_ref: " + reference);
       }
     } else {
-      // Ignore non-successful charge events
       console.log(" Charge failed with tx_ref: ", webhookPayload.data.tx_ref);
     }
   } catch (error) {
@@ -110,7 +102,15 @@ export const fetchTransactionsByUserID = async (req: Request, res: Response) => 
   try {
     const { userId } = req.params;
     const transactions = await Transaction.getTransactionsByUser(parseInt(userId));
-    res.json(transactions);
+    const serializedTransactions = transactions.map(transaction => ({
+      ...transaction,
+      transaction: {
+        ...transaction.transaction,
+        initiationDateTime: Number(transaction.transaction.initiationDateTime),
+        completionDateTime: Number(transaction.transaction.completionDateTime)
+      }
+    }));
+    res.json(serializedTransactions);
   } catch (error) {
     console.error('Error fetching transactions by user:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -119,14 +119,27 @@ export const fetchTransactionsByUserID = async (req: Request, res: Response) => 
 
 export const fetchTransactionByTime = async (req: Request, res: Response) => {
   try {
+    const token = req.headers.authorization!.split(" ")[1];
+    const decodedToken = jwt.decode(token);
+    if (typeof decodedToken === 'object' && decodedToken !== null) {
+      const userId = decodedToken.user?.id;
     const { startDate, endDate } = req.query as { startDate: string, endDate: string };
     if (!startDate || !endDate) {
       return res.status(400).json({ message: 'Start date and end date are required' });
     }
     const startTime = new Date(startDate).getTime();
     const endTime = new Date(endDate).getTime();
-    const transactions = await Transaction.getTransactionsByTime(startTime, endTime);
-    res.json(transactions);
+    const transactions = await Transaction.getTransactionsByTime(startTime, endTime, parseInt(userId));
+    const serializedTransactions = transactions.map(transaction => ({
+      ...transaction,
+      transaction: {
+        ...transaction.transaction,
+        initiationDateTime: Number(transaction.transaction.initiationDateTime),
+        completionDateTime: Number(transaction.transaction.completionDateTime)
+      }
+    }));
+    res.json(serializedTransactions);
+  }
   } catch (error) {
     console.error('Error fetching transactions by time:', error);
     res.status(500).json({ message: 'Internal server error' });    

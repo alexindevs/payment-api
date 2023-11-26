@@ -20,12 +20,11 @@ class User {
      */
     static async createAccount(username, email, password) {
         try {
-            const hashedPassword = await bcrypt_1.default.hash(password, 10);
             const newUser = await prisma.user.create({
                 data: {
                     username,
                     email,
-                    password: hashedPassword,
+                    password
                 },
             });
             return new User(newUser);
@@ -99,7 +98,11 @@ class User {
      */
     async checkPassword(password) {
         try {
-            return await bcrypt_1.default.compare(password, this.user.password);
+            console.log('Provided password:', password);
+            console.log('User password:', this.user.password);
+            const passwordsMatch = await bcrypt_1.default.compare(password, this.user.password);
+            console.log('Passwords match:', passwordsMatch);
+            return passwordsMatch;
         }
         catch (error) {
             console.error('Error comparing passwords:', error);

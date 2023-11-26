@@ -24,13 +24,11 @@ class User {
     password: string
   ): Promise<User | null> {
     try {
-      const hashedPassword = await bcrypt.hash(password, 10);
-
       const newUser = await prisma.user.create({
         data: {
           username,
           email,
-          password: hashedPassword,
+          password
         },
       });
 
@@ -102,20 +100,24 @@ class User {
   }
 
 
-  /**
-   * Check if the provided password matches the user's password.
-   *
-   * @param {string} password - The password to check against the user's password.
-   * @return {Promise<boolean>} A Promise that resolves to true if the passwords match, and false otherwise.
-   */
-  async checkPassword(password: string): Promise<boolean> {
-    try {
-      return await bcrypt.compare(password, this.user.password);
-    } catch (error) {
-      console.error('Error comparing passwords:', error);
-      return false;
-    }
+/**
+ * Check if the provided password matches the user's password.
+ *
+ * @param {string} password - The password to check against the user's password.
+ * @return {Promise<boolean>} A Promise that resolves to true if the passwords match, and false otherwise.
+ */
+async checkPassword(password: string): Promise<boolean> {
+  try {
+    console.log('Provided password:', password);
+    console.log('User password:', this.user.password);
+    const passwordsMatch = await bcrypt.compare(password, this.user.password);
+    console.log('Passwords match:', passwordsMatch);
+    return passwordsMatch;
+  } catch (error) {
+    console.error('Error comparing passwords:', error);
+    return false;
   }
+}
 
   /**
    * Retrieves a user by their ID.
